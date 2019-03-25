@@ -52,15 +52,28 @@ exports.handler = function(event, context, callback) {
       
     var paramsEditUser =  {
       UserAttributes: _body.updatedData,
-      // [{
-      //   Name: 'custom:role',
-      //   Value: 'employed'
-      // }],
       UserPoolId: process.env.UserPoolId,
       Username: _body.curUserName
     }
     
     cognitoIdServiceProvider.adminUpdateUserAttributes(paramsEditUser, function(err, data) {
+      if (!err) {
+        return callback(null, buildOutput(200, data));
+      } else {
+        return callback(buildOutput(500, err.stack), null);
+      }
+    });
+  } else if (event.resource === '/users' && event.httpMethod === 'DELETE') {
+    const cognitoIdServiceProvider = new AWS.CognitoIdentityServiceProvider({
+      region: process.env.Region
+    });
+      
+    var paramsDelUser =  {
+      UserPoolId: process.env.UserPoolId,
+      Username: _body.curUserName
+    }
+    
+    cognitoIdServiceProvider.adminDeleteUser(paramsDelUser, function(err, data) {
       if (!err) {
         return callback(null, buildOutput(200, data));
       } else {
