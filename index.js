@@ -41,15 +41,14 @@ exports.handler = function(event, context, callback) {
       if(err) {
         return callback( buildOutput(500, err), null );
       } else {
-        var cognitoUser = result.user.username;
-        return callback( null, buildOutput(200, cognitoUser) );
+        return callback( null, buildOutput(200, result) );
       }
     });
   } else if (event.resource === '/users' && event.httpMethod === 'PUT') {
     const cognitoIdServiceProvider = new AWS.CognitoIdentityServiceProvider({
       region: process.env.Region
     });
-      
+
     var paramsEditUser =  {
       UserAttributes: _body.updatedData,
       UserPoolId: process.env.UserPoolId,
@@ -140,7 +139,8 @@ function buildOutput(statusCode, data) {
   let _response = {
     statusCode: statusCode,
     headers: {
-        'Access-Control-Allow-Origin': '*'
+        'Access-Control-Allow-Origin': '*',
+        "Access-Control-Allow-Credentials": true,
     },
     body: JSON.stringify(data)
   };
