@@ -1,5 +1,6 @@
 'use strict';
-let AWS = require('aws-sdk');
+
+const AWS = require('aws-sdk');
 var AmazonCognitoIdentity = require('amazon-cognito-identity-js');
 var CognitoUserPool = AmazonCognitoIdentity.CognitoUserPool;
 var CognitoUserAttribute = AmazonCognitoIdentity.CognitoUserAttribute;
@@ -8,11 +9,11 @@ const CognitoIdentityService = new AWS.CognitoIdentityServiceProvider();
 exports.handler = function(event, context, callback) {
 
   // Define AWS Cognito User Pool
-  const params = {
+  var paramsGetUser = {
     UserPoolId: process.env.UserPoolId
   };
 
-  var poolData = {
+  var paramsAddUser = {
     UserPoolId: process.env.UserPoolId,
     ClientId: process.env.ClientId
   };
@@ -24,7 +25,7 @@ exports.handler = function(event, context, callback) {
 
   // set logic for proxied API path
   if (event.resource === '/users' && event.httpMethod === 'GET') {
-    CognitoIdentityService.listUsers(params, (err, data) => {
+    CognitoIdentityService.listUsers(paramsGetUser, (err, data) => {
       if (!err) {
         return callback(null, buildOutput(200, data));
       } else {
@@ -33,7 +34,7 @@ exports.handler = function(event, context, callback) {
     });
   } else if (event.resource === '/users' && event.httpMethod === 'POST') {
 
-    var userPool = new CognitoUserPool(poolData);
+    var userPool = new CognitoUserPool(paramsAddUser);
     // Create User via AWS Cognito
     var attributeList = infoNewUser(_body);
     userPool.signUp(_body.username, _body.password, attributeList, null, function(err, result) {
@@ -42,6 +43,28 @@ exports.handler = function(event, context, callback) {
       } else {
         var cognitoUser = result.user.username;
         return callback( null, buildOutput(200, cognitoUser) );
+      }
+    });
+  } else if (event.resource === '/users' && event.httpMethod === 'PUT') {
+    const cognitoIdServiceProvider = new AWS.CognitoIdentityServiceProvider({
+      region: process.env.Region
+    });
+      
+    var paramsEditUser =  {
+      UserAttributes: _body.updatedData,
+      // [{
+      //   Name: 'custom:role',
+      //   Value: 'employed'
+      // }],
+      UserPoolId: process.env.UserPoolId,
+      Username: _body.curUserName
+    }
+    
+    cognitoIdServiceProvider.adminUpdateUserAttributes(paramsEditUser, function(err, data) {
+      if (!err) {
+        return callback(null, buildOutput(200, data));
+      } else {
+        return callback(buildOutput(500, err.stack), null);
       }
     });
   } else{
@@ -110,31 +133,4 @@ function buildOutput(statusCode, data) {
   };
 
   return _response;
-};
-
-
-/**
- * Process operation response and log the access/result.
- * @param {JSON} err - Error returned from operation.
- * @param {JSON} data - Data returned from operation.
- * @param {JSON} operation - Description of operation executed.
- * @param {string} requestId - Id of the request.
- * @param {string} userid - Id of user requesting operation.
- * @param {processResponse~callback} cb - The callback that handles the response.
- */
-function processResponse(err, data, operation, requestId, userid, cb) {
-  let _response = {};
-
-  if (err) {
-      console.log(err);
-      _response = buildOutput(500, err);
-      return cb(_response, null);
-      
-  } else {
-      _response = buildOutput(200, data);
-      return cb(null, _response);
-      // _accessLog.logEvent(requestId, servicename, userid, operation, 'success', function(err, resp) {
-      //     return cb(null, _response);
-      // });
-  }
 };
