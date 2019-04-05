@@ -27,6 +27,7 @@ exports.handler = function(event, context, callback) {
   if (event.resource === '/users' && event.httpMethod === 'GET') {
     CognitoIdentityService.listUsers(paramsGetUser, (err, data) => {
       if (!err) {
+        data.profile = event.requestContext.authorizer.claims;
         return callback(null, buildOutput(200, data));
       } else {
         return callback(buildOutput(500, err), null);
